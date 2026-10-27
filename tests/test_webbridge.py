@@ -29,6 +29,30 @@ def test_command_uses_local_bridge_and_fixed_session(monkeypatch) -> None:
     assert json.loads(request.data)["session"] == "spark-keeper-v2"
 
 
+def test_connection_status_uses_a_short_read_only_check(monkeypatch) -> None:
+    calls = []
+
+    def fake_post(action, args, timeout):
+        calls.append((action, args, timeout))
+        return {"ok": True, "data": {"tabs": []}}
+
+    monkeypatch.setattr(webbridge, "_post", fake_post)
+
+    assert webbridge.connection_status() == {"available": True}
+    assert calls == [("list_tabs", {}, 2)]
+
+
+def test_connection_status_reports_missing_bridge_without_raising(monkeypatch) -> None:
+    def fake_post(action, args, timeout):
+        raise webbridge.WebBridgeError("无法连接 Kimi WebBridge")
+
+    monkeypatch.setattr(webbridge, "_post", fake_post)
+
+    result = webbridge.connection_status()
+    assert result["available"] is False
+    assert "无法连接" in result["message"]
+
+
 def configure_runner(monkeypatch):
     history = MagicMock()
     history.run_date.return_value = "2026-10-26"

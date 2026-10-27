@@ -23,6 +23,9 @@ const elements = {
   confirmDescription: document.querySelector('#confirm-description'),
   cancelWatch: document.querySelector('#cancel-watch'),
   confirmWatch: document.querySelector('#confirm-watch'),
+  webbridgeDialog: document.querySelector('#webbridge-dialog'),
+  webbridgeLater: document.querySelector('#webbridge-later'),
+  webbridgeInstallNow: document.querySelector('#webbridge-install-now'),
   logs: document.querySelector('#logs'),
   logsView: document.querySelector('#logs-view'),
   overviewView: document.querySelector('#overview-view'),
@@ -262,6 +265,11 @@ elements.login.addEventListener('click', () => perform(() => window.spark.login(
 document.querySelector('#webbridge-install').addEventListener('click', () => {
   window.spark.openWebBridgeInstall().catch((error) => notify(friendlyError(error)));
 });
+elements.webbridgeLater.addEventListener('click', () => elements.webbridgeDialog.close());
+elements.webbridgeInstallNow.addEventListener('click', () => {
+  elements.webbridgeDialog.close();
+  window.spark.openWebBridgeInstall().catch((error) => notify(friendlyError(error)));
+});
 document.querySelectorAll('[data-view]').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
 document.querySelectorAll('input[name="message-type"]').forEach((input) => input.addEventListener('change', updateMessageFields));
 document.querySelectorAll('[data-content]').forEach((button) => button.addEventListener('click', () => {
@@ -299,11 +307,12 @@ elements.form.addEventListener('submit', async (event) => {
   updateControls();
   elements.settingsStatus.textContent = '';
   try {
-    await window.spark.saveConfig(settings);
+    const result = await window.spark.saveConfig(settings);
     currentConfig = { time: settings.time, message_type: messageType, content: settings.content.trim(), browser_mode: settings.browserMode };
     renderConfig();
     elements.settingsStatus.textContent = '已保存';
     notify('发送设置已保存');
+    if (result.webbridgeAvailable === false && !elements.webbridgeDialog.open) elements.webbridgeDialog.showModal();
   } catch (error) {
     notify(friendlyError(error));
   } finally {

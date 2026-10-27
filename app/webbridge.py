@@ -14,14 +14,25 @@ class WebBridgeError(RuntimeError):
     pass
 
 
-def _post(action: str, args: dict) -> dict:
+def _post(action: str, args: dict, timeout: float = 45) -> dict:
     body = json.dumps({"action": action, "args": args, "session": SESSION}, ensure_ascii=False).encode("utf-8")
     request = Request(BRIDGE_URL, data=body, headers={"Content-Type": "application/json"}, method="POST")
     try:
-        with urlopen(request, timeout=45) as response:
+        with urlopen(request, timeout=timeout) as response:
             return json.loads(response.read().decode("utf-8"))
     except Exception as exc:
         raise WebBridgeError("无法连接 Kimi WebBridge，请确认扩展和本机服务已开启") from exc
+
+
+def connection_status() -> dict:
+    """快速探测本机桥接服务，不创建标签页，也不影响正常扫描的长超时。"""
+    try:
+        payload = _post("list_tabs", {}, timeout=2)
+    except WebBridgeError as exc:
+        return {"available": False, "message": str(exc)}
+    if payload.get("ok"):
+        return {"available": True}
+    return {"available": False, "message": "Kimi WebBridge 未就绪，请确认扩展和本机服务已开启"}
 
 
 def command(action: str, args: dict | None = None, _retries: int = 0) -> dict:

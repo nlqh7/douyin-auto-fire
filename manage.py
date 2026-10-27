@@ -169,6 +169,13 @@ def account_refresh() -> int:
     return 0
 
 
+def webbridge_status() -> int:
+    from app.webbridge import connection_status
+
+    print(json.dumps(connection_status(), ensure_ascii=False))
+    return 0
+
+
 def configure(args: argparse.Namespace) -> int:
     control = load_control()
     control.update({"time": args.time, "message_type": args.message_type, "content": args.content, "browser_mode": args.browser_mode})
@@ -322,6 +329,7 @@ def parse_args() -> argparse.Namespace:
     subparsers.add_parser("config", help="输出当前本地设置")
     subparsers.add_parser("account-status", help="输出当前账号和待续火花状态")
     subparsers.add_parser("account-refresh", help="在后台同步账号资料和头像")
+    subparsers.add_parser("webbridge-status", help="快速检测 Kimi WebBridge 是否可用")
     configure_parser = subparsers.add_parser("configure", help="保存时间、文字或原生表情设置")
     configure_parser.add_argument("--time", required=True)
     configure_parser.add_argument("--message-type", choices=("text", "sticker"), required=True)
@@ -349,6 +357,8 @@ def main() -> int:
         return show_config()
     if args.command == "account-status":
         return account_status()
+    if args.command == "webbridge-status":
+        return webbridge_status()
     if args.command == "configure":
         return configure(args)
     if args.command == "pause":

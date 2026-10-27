@@ -6,6 +6,7 @@ const COMMANDS = Object.freeze({
   config: ['config'],
   accountStatus: ['account-status'],
   accountRefresh: ['account-refresh'],
+  webbridgeStatus: ['webbridge-status'],
   login: ['login'],
   dryRun: ['dry-run'],
   pause: ['pause'],

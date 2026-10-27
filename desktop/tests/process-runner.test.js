@@ -17,6 +17,7 @@ test('only fixed management commands are available', () => {
   assert.deepEqual(commandArguments('dryRun'), ['dry-run']);
   assert.deepEqual(commandArguments('status'), ['status']);
   assert.deepEqual(commandArguments('accountRefresh'), ['account-refresh']);
+  assert.deepEqual(commandArguments('webbridgeStatus'), ['webbridge-status']);
   assert.throws(() => commandArguments('shell'), /不支持/);
 });
 

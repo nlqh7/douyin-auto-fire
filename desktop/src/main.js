@@ -128,7 +128,17 @@ function handleWatchExit() {
 
 ipcMain.handle('status', () => statusCache.get());
 ipcMain.handle('open-webbridge-install', () => openWebBridgeInstall(shell));
-ipcMain.handle('save-config', (_event, settings) => afterAction(() => runner.saveConfig(settings)));
+ipcMain.handle('save-config', async (_event, settings) => {
+  const result = await afterAction(() => runner.saveConfig(settings));
+  if (settings.browserMode !== 'webbridge') return { ...result, webbridgeAvailable: null };
+  if (smokeTest) return { ...result, webbridgeAvailable: false };
+  try {
+    const check = await runner.run('webbridgeStatus');
+    return { ...result, webbridgeAvailable: JSON.parse(check.output).available === true };
+  } catch {
+    return { ...result, webbridgeAvailable: false };
+  }
+});
 ipcMain.handle('login', () => afterAction(() => runner.run('login')));
 let scanPromise = null;
 ipcMain.handle('dry-run', () => {
@@ -238,6 +248,9 @@ if (process.argv.includes('--smoke-test')) {
       const scanFeedback = webbridgeMode ? 'WebBridge 由独立真实页面测试覆盖' : document.querySelector('#toast').textContent;
       document.querySelector('#settings-form').requestSubmit();
       for (let i = 0; i < 300 && busy; i++) await new Promise(resolve => setTimeout(resolve, 100));
+      const webbridgeWarning = !webbridgeMode || document.querySelector('#webbridge-dialog').open;
+      if (webbridgeMode) document.querySelector('#webbridge-later').click();
+      const webbridgeWarningClosed = !document.querySelector('#webbridge-dialog').open;
       document.querySelector('input[name="message-type"][value="sticker"]').click();
       document.querySelector('#sticker-current').click();
       const stickerCount = document.querySelectorAll('#sticker-options button').length;
@@ -277,6 +290,8 @@ if (process.argv.includes('--smoke-test')) {
         scanFeedback,
         settingsSaved: document.querySelector('#settings-status').textContent,
         scheduleTime: document.querySelector('#schedule-time').textContent,
+        webbridgeWarning,
+        webbridgeWarningClosed,
         logsVisible,
         stickerCount,
         selectedSticker,
@@ -301,7 +316,7 @@ if (process.argv.includes('--smoke-test')) {
     const screenshot = await window.webContents.capturePage();
     if (screenshot.isEmpty()) throw new Error('窗口截图失败');
     await fs.writeFile(path.join(root, 'artifacts', 'desktop-smoke.png'), screenshot.toPNG());
-    const failed = result.scrollHeight > result.clientHeight || !result.correctStorageRoot || result.node !== 'undefined' || result.api !== 'function' || result.webbridgeInstallApi !== 'function' || result.webbridgeInstallLabel !== 'WebBridge 官方安装 ↗' || !result.startupScanDisabled || (result.loginRequired && !result.scanDisabled) || !interaction.enabledAfterLogin || !(interaction.scanFeedback.includes('尚未完成独立浏览器登录') || interaction.scanFeedback.includes('WebBridge')) || !interaction.feedback.includes('发送设置已保存') || interaction.settingsSaved !== '已保存' || !interaction.logsVisible || interaction.stickerCount !== 12 || interaction.selectedSticker !== '续火花' || !interaction.stickerImageLoaded || !interaction.pendingState || !interaction.initiallyCollapsed || !interaction.disclosureExpanded || !interaction.disclosureCollapsed || !interaction.settingsFit || !interaction.avatarFallback || !interaction.avatarLoaded || !interaction.avatarRetained || !interaction.completedState;
+    const failed = result.scrollHeight > result.clientHeight || !result.correctStorageRoot || result.node !== 'undefined' || result.api !== 'function' || result.webbridgeInstallApi !== 'function' || result.webbridgeInstallLabel !== 'WebBridge 官方安装 ↗' || !result.startupScanDisabled || (result.loginRequired && !result.scanDisabled) || !interaction.enabledAfterLogin || !(interaction.scanFeedback.includes('尚未完成独立浏览器登录') || interaction.scanFeedback.includes('WebBridge')) || !interaction.feedback.includes('发送设置已保存') || interaction.settingsSaved !== '已保存' || !interaction.webbridgeWarning || !interaction.webbridgeWarningClosed || !interaction.logsVisible || interaction.stickerCount !== 12 || interaction.selectedSticker !== '续火花' || !interaction.stickerImageLoaded || !interaction.pendingState || !interaction.initiallyCollapsed || !interaction.disclosureExpanded || !interaction.disclosureCollapsed || !interaction.settingsFit || !interaction.avatarFallback || !interaction.avatarLoaded || !interaction.avatarRetained || !interaction.completedState;
     await fs.writeFile(path.join(root, 'artifacts', 'smoke-result.json'), JSON.stringify({ result, interaction, failed }));
     app.exit(failed ? 1 : 0);
   }).catch((error) => {
