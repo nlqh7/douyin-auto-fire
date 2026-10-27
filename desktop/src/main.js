@@ -6,6 +6,7 @@ const { ProcessRunner } = require('./process-runner');
 const { avatarData } = require('./avatar-data');
 const { StatusCache } = require('./status-cache');
 const { openWebBridgeInstall } = require('./external-links');
+const { configureSingleInstance } = require('./single-instance');
 
 const isUnpacked = app.isPackaged && path.basename(path.resolve(process.resourcesPath, '..')) === 'win-unpacked';
 const root = app.isPackaged ? (process.env.PORTABLE_EXECUTABLE_DIR || (isUnpacked ? path.resolve(process.resourcesPath, '..', '..', '..') : path.dirname(process.execPath))) : path.resolve(__dirname, '..', '..');
@@ -21,7 +22,7 @@ if (isUnpacked) {
   }
 }
 const smokeTest = process.argv.includes('--smoke-test');
-app.setPath('userData', path.join(root, 'data', smokeTest ? 'electron-smoke' : 'electron'));
+if (!configureSingleInstance(app, root, smokeTest)) process.exit(0);
 const runner = new ProcessRunner(root, undefined, { managePath: app.isPackaged ? path.join(process.resourcesPath, 'manage.exe') : null });
 let window;
 let tray;
@@ -32,7 +33,6 @@ function showWindow() {
   window.focus();
 }
 
-if (!smokeTest && !app.requestSingleInstanceLock()) process.exit(0);
 app.on('second-instance', () => {
   if (window) {
     if (window.isMinimized()) window.restore();
