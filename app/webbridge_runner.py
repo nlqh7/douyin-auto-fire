@@ -10,7 +10,7 @@ from app.control import message_for_control
 from app.history import History
 from app.main import _configure_logging
 from app.privacy import target_alias
-from app.webbridge import WebBridgeError, deactivate_page, discover_gray_streaks, ensure_chat, open_target, send_sticker, send_text
+from app.webbridge import WebBridgeError, close_managed_pages, discover_gray_streaks, ensure_chat, open_target, send_sticker, send_text
 
 
 TASK_ID = "guarded-gray-streak"
@@ -85,6 +85,6 @@ def run_webbridge(control: dict, log_dir: Path, *, dry_run: bool) -> int:
         raise
     finally:
         try:
-            deactivate_page()
+            close_managed_pages()
         except Exception:
-            logger.exception("WebBridge 页面清理失败")
+            logger.exception("WebBridge 受控标签清理失败")

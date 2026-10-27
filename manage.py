@@ -119,7 +119,7 @@ def login() -> int:
     if load_control()["browser_mode"] == "webbridge":
         from app.account import refresh_account
         refresh_account()
-        print("已同步账号信息，并在当前 Chrome 打开抖音私信。")
+        print("已同步账号信息；受控标签已在后台清理。")
         return 0
     asyncio.run(login_browser(DATA_DIR / "storage-state.json", load_control()["browser_mode"]))
     return 0

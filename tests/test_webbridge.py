@@ -37,7 +37,7 @@ def configure_runner(monkeypatch):
     monkeypatch.setattr(runner, "History", MagicMock(return_value=history))
     monkeypatch.setattr(runner, "_configure_logging", lambda *args, **kwargs: None)
     monkeypatch.setattr(runner, "ensure_chat", MagicMock())
-    monkeypatch.setattr(runner, "deactivate_page", MagicMock())
+    monkeypatch.setattr(runner, "close_managed_pages", MagicMock())
     monkeypatch.setattr(runner, "discover_gray_streaks", MagicMock(return_value=["甲", "乙"]))
     monkeypatch.setattr(runner, "open_target", MagicMock())
     monkeypatch.setattr(runner, "send_text", MagicMock())
@@ -55,6 +55,7 @@ def test_dry_run_checks_every_target_without_sending(monkeypatch, tmp_path) -> N
     runner.send_text.assert_not_called()
     runner.send_sticker.assert_not_called()
     history.reserve.assert_not_called()
+    runner.close_managed_pages.assert_called_once_with()
 
 
 def test_webbridge_sends_configured_text_once_per_target(monkeypatch, tmp_path) -> None:
@@ -79,9 +80,10 @@ def test_webbridge_logs_failure_before_scan(monkeypatch, tmp_path, caplog) -> No
 
     assert "WebBridge 续火花任务停止" in caplog.text
     assert "私信页尚未就绪" in caplog.text
+    runner.close_managed_pages.assert_called_once_with()
 
 
-def test_detached_bridge_reconnects_and_retries(monkeypatch) -> None:
+def test_detached_bridge_retries_without_stealing_focus(monkeypatch) -> None:
     calls = []
 
     def fake_post(action, args):
@@ -94,5 +96,50 @@ def test_detached_bridge_reconnects_and_retries(monkeypatch) -> None:
     monkeypatch.setattr(webbridge.time, "sleep", lambda _: None)
 
     assert webbridge.command("evaluate", {"code": "1"})["success"] is True
-    assert calls[1][0] == "cdp"
-    assert calls[2][0] == "evaluate"
+    assert [call[0] for call in calls] == ["evaluate", "evaluate"]
+
+
+def test_chat_reuses_tab_and_reloads_once_when_stale(monkeypatch) -> None:
+    calls = []
+    reloads = []
+    structures = iter(({"login": False, "search": 0}, {"login": False, "search": 1}))
+
+    def fake_command(action, args=None):
+        calls.append((action, args or {}))
+        if action == "list_tabs":
+            return {"tabs": [{"url": webbridge.CHAT_URL, "title": "抖音"}]}
+        return {}
+
+    def fake_evaluate(code):
+        if "location.reload" in code:
+            reloads.append(code)
+            return True
+        if "document.body.innerText" in code:
+            return next(structures)
+        return False
+
+    monkeypatch.setattr(webbridge, "command", fake_command)
+    monkeypatch.setattr(webbridge, "evaluate", fake_evaluate)
+    monkeypatch.setattr(webbridge.time, "sleep", lambda _: None)
+
+    webbridge.ensure_chat()
+
+    assert calls == [("list_tabs", {}), ("find_tab", {"url": webbridge.CHAT_URL})]
+    assert len(reloads) == 1
+    assert not any(call[0] in {"navigate", "cdp"} for call in calls)
+
+
+def test_closed_tab_id_is_retried_without_creating_duplicates(monkeypatch) -> None:
+    calls = []
+
+    def fake_post(action, args):
+        calls.append((action, args))
+        if len(calls) == 1:
+            return {"ok": False, "error": {"message": "No tab with given id 123."}}
+        return {"ok": True, "data": {"success": True}}
+
+    monkeypatch.setattr(webbridge, "_post", fake_post)
+    monkeypatch.setattr(webbridge.time, "sleep", lambda _: None)
+
+    assert webbridge.command("navigate", {"url": webbridge.CHAT_URL, "newTab": True})["success"] is True
+    assert [call[0] for call in calls] == ["navigate", "navigate"]

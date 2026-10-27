@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
-from app.webbridge import ensure_chat, evaluate, command
+from app.webbridge import close_managed_pages, ensure_chat, ensure_tab, evaluate
 
 
 ROOT = Path(os.environ.get("SPARK_ROOT", Path(__file__).resolve().parents[1]))
@@ -43,32 +43,35 @@ def save_avatar(url: str | None) -> bool:
 
 def refresh_account() -> dict:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    command("navigate", {"url": "https://www.douyin.com/user/self", "newTab": True, "group_title": "火花账号信息"})
-    profile = evaluate(
-        """(async () => {
-          const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
-          let profile = {name: '', avatar: ''};
-          for (let i = 0; i < 20; i++) {
-            const heading = [...document.querySelectorAll('h1')].find(e => e.innerText.trim());
-            const image = document.querySelector('[data-e2e="live-avatar"] img') || [...document.images].find(img => heading && img.alt === `${heading.innerText.trim()}头像`);
-            profile = {name: heading?.innerText.trim() || '', avatar: image?.currentSrc || image?.src || ''};
-            if (profile.name && profile.avatar) break;
-            await wait(500);
-          }
-          return profile;
-        })()"""
-    )
-    if not profile.get("name"):
-        raise RuntimeError("无法读取当前抖音账号名称")
-    avatar_saved = save_avatar(profile.get("avatar"))
-    account = {
-        "name": profile["name"],
-        "avatar": AVATAR_PATH.name if avatar_saved or AVATAR_PATH.is_file() else None,
-        "refreshed_at": datetime.now().astimezone().isoformat(),
-    }
-    ACCOUNT_PATH.write_text(json.dumps(account, ensure_ascii=False), encoding="utf-8")
-    ensure_chat()
-    return account
+    try:
+        ensure_tab("https://www.douyin.com/user/self", "火花账号信息")
+        profile = evaluate(
+            """(async () => {
+              const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+              let profile = {name: '', avatar: ''};
+              for (let i = 0; i < 20; i++) {
+                const heading = [...document.querySelectorAll('h1')].find(e => e.innerText.trim());
+                const image = document.querySelector('[data-e2e="live-avatar"] img') || [...document.images].find(img => heading && img.alt === `${heading.innerText.trim()}头像`);
+                profile = {name: heading?.innerText.trim() || '', avatar: image?.currentSrc || image?.src || ''};
+                if (profile.name && profile.avatar) break;
+                await wait(500);
+              }
+              return profile;
+            })()"""
+        )
+        if not profile.get("name"):
+            raise RuntimeError("无法读取当前抖音账号名称")
+        avatar_saved = save_avatar(profile.get("avatar"))
+        account = {
+            "name": profile["name"],
+            "avatar": AVATAR_PATH.name if avatar_saved or AVATAR_PATH.is_file() else None,
+            "refreshed_at": datetime.now().astimezone().isoformat(),
+        }
+        ACCOUNT_PATH.write_text(json.dumps(account, ensure_ascii=False), encoding="utf-8")
+        ensure_chat()
+        return account
+    finally:
+        close_managed_pages()
 
 
 def account_status() -> dict:

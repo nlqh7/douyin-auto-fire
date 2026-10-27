@@ -29,12 +29,10 @@ def command(action: str, args: dict | None = None, _retries: int = 0) -> dict:
     if not payload.get("ok"):
         error = payload.get("error") or payload
         message = str(error.get("message", error) if isinstance(error, dict) else error)
-        if "detached" in message.lower() and _retries < 2:
-            time.sleep(0.3)
-            try:
-                _post("cdp", {"method": "Page.bringToFront", "params": {}})
-            except WebBridgeError:
-                pass
+        normalized = message.lower()
+        recoverable = "detached" in normalized or "no tab with given id" in normalized
+        if recoverable and _retries < 2:
+            time.sleep(0.5)
             return command(action, args, _retries + 1)
         raise WebBridgeError(message)
     data = payload.get("data")
@@ -46,27 +44,35 @@ def evaluate(code: str):
     return result.get("value")
 
 
-def ensure_chat() -> None:
+def ensure_tab(url: str, group_title: str) -> None:
     tabs = command("list_tabs").get("tabs", [])
-    if any(tab.get("url", "").startswith(CHAT_URL) for tab in tabs):
-        command("find_tab", {"url": CHAT_URL})
+    existing = next((tab for tab in tabs if tab.get("url", "").startswith(url)), None)
+    if existing:
+        command("find_tab", {"url": existing.get("url") or url})
     else:
-        command("navigate", {"url": CHAT_URL, "newTab": True, "group_title": "火花管家"})
-    command("cdp", {"method": "Page.bringToFront", "params": {}})
-    time.sleep(3)
-    evaluate("(() => { const cancel = document.querySelector('[class*=\"searchSearchInputsearch_cancel\"]'); if (cancel && cancel.offsetParent !== null) { cancel.click(); return true; } return false; })()")
-    time.sleep(0.5)
-    structure = evaluate(
-        "(() => ({login: document.body.innerText.includes('扫码登录'), search: document.querySelectorAll('input[placeholder*=\"搜索\"]').length}))()"
-    )
-    if structure.get("login"):
-        raise WebBridgeError("当前抖音页面需要登录，请在已打开的 Chrome 页面登录后重试")
-    if not structure.get("search"):
-        raise WebBridgeError("抖音私信页尚未就绪或页面结构已变化")
+        command("navigate", {"url": url, "newTab": True, "group_title": group_title})
 
 
-def deactivate_page() -> None:
-    command("cdp", {"method": "Emulation.setFocusEmulationEnabled", "params": {"enabled": False}})
+def ensure_chat() -> None:
+    ensure_tab(CHAT_URL, "火花管家")
+    for attempt in range(2):
+        time.sleep(3)
+        evaluate("(() => { const cancel = document.querySelector('[class*=\"searchSearchInputsearch_cancel\"]'); if (cancel && cancel.offsetParent !== null) { cancel.click(); return true; } return false; })()")
+        time.sleep(0.5)
+        structure = evaluate(
+            "(() => ({login: document.body.innerText.includes('扫码登录'), search: document.querySelectorAll('input[placeholder*=\"搜索\"]').length}))()"
+        )
+        if structure.get("login"):
+            raise WebBridgeError("当前抖音页面需要登录，请在已打开的 Chrome 页面登录后重试")
+        if structure.get("search"):
+            return
+        if attempt == 0:
+            evaluate("(() => { location.reload(); return true; })()")
+    raise WebBridgeError("抖音私信页刷新后仍未就绪或页面结构已变化")
+
+
+def close_managed_pages() -> None:
+    command("close_session")
 
 
 def discover_gray_streaks() -> list[str]:

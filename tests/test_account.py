@@ -11,7 +11,7 @@ def test_cached_account_and_scan_status(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(account, "SCAN_PATH", tmp_path / "scan-status.json")
     account.ACCOUNT_PATH.write_text(json.dumps({"name": "测试账号"}), encoding="utf-8")
     account.SCAN_PATH.write_text(json.dumps({"count": 2, "targets": ["甲", "乙"]}), encoding="utf-8")
-    monkeypatch.setattr(account, "command", lambda *args: (_ for _ in ()).throw(AssertionError("不应访问浏览器")))
+    monkeypatch.setattr(account, "ensure_tab", lambda *args: (_ for _ in ()).throw(AssertionError("不应访问浏览器")))
 
     result = account.account_status()
 
@@ -37,10 +37,14 @@ def test_refresh_keeps_previous_avatar_when_download_fails(monkeypatch, tmp_path
     monkeypatch.setattr(account, "ACCOUNT_PATH", tmp_path / "account.json")
     monkeypatch.setattr(account, "AVATAR_PATH", tmp_path / "douyin-avatar.jpg")
     account.AVATAR_PATH.write_bytes(b"previous avatar")
-    monkeypatch.setattr(account, "command", lambda *args: {})
+    opened = []
+    monkeypatch.setattr(account, "ensure_tab", lambda url, group: opened.append((url, group)))
     monkeypatch.setattr(account, "evaluate", lambda code: {"name": "测试账号", "avatar": "https://example.com/new.jpg"})
     monkeypatch.setattr(account, "save_avatar", lambda url: False)
     monkeypatch.setattr(account, "ensure_chat", lambda: None)
+    from unittest.mock import MagicMock
+    close_pages = MagicMock()
+    monkeypatch.setattr(account, "close_managed_pages", close_pages)
 
     result = account.refresh_account()
 
@@ -49,6 +53,8 @@ def test_refresh_keeps_previous_avatar_when_download_fails(monkeypatch, tmp_path
     assert result["refreshed_at"]
     assert account.AVATAR_PATH.read_bytes() == b"previous avatar"
     assert json.loads(account.ACCOUNT_PATH.read_text(encoding="utf-8")) == result
+    assert opened == [("https://www.douyin.com/user/self", "火花账号信息")]
+    close_pages.assert_called_once_with()
 
 
 def test_scan_from_previous_day_is_not_shown_as_pending_today(monkeypatch, tmp_path) -> None:
