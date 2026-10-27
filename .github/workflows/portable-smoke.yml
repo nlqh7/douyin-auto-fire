@@ -1,0 +1,58 @@
+name: portable-release-smoke
+
+on:
+  push:
+    paths: [".github/workflows/portable-smoke.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  clean-windows-download:
+    runs-on: windows-latest
+    steps:
+      - name: Download and test only the published portable EXE
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = '1.0.9'
+          $expectedHash = '81bf45184068aba6749fc3ea88a03d58a67ddca8fd174a7f1c44fa6c0003a87b'
+          $fileName = "SparkKeeper-$version-win-x64.exe"
+          $exe = Join-Path $env:RUNNER_TEMP $fileName
+          $uri = "https://github.com/nlqh7/douyin-auto-fire/releases/download/v$version/$fileName"
+          Invoke-WebRequest -Uri $uri -OutFile $exe
+          $actualHash = (Get-FileHash -Algorithm SHA256 $exe).Hash.ToLowerInvariant()
+          Write-Host "Downloaded: $uri"
+          Write-Host "SHA256: $actualHash"
+          if ($actualHash -ne $expectedHash) { throw 'Release checksum mismatch' }
+
+          $stdout = Join-Path $env:RUNNER_TEMP 'portable-stdout.log'
+          $stderr = Join-Path $env:RUNNER_TEMP 'portable-stderr.log'
+          $process = Start-Process -FilePath $exe -ArgumentList '--smoke-test' -WorkingDirectory $env:RUNNER_TEMP -RedirectStandardOutput $stdout -RedirectStandardError $stderr -Wait -PassThru
+          Write-Host '--- stdout ---'
+          if (Test-Path $stdout) { Get-Content $stdout }
+          Write-Host '--- stderr ---'
+          if (Test-Path $stderr) { Get-Content $stderr }
+          if ($process.ExitCode -ne 0) { throw "Portable smoke test exited with $($process.ExitCode)" }
+
+          $resultPath = Join-Path $env:RUNNER_TEMP 'artifacts/smoke-result.json'
+          if (-not (Test-Path $resultPath)) { throw 'Smoke result was not created' }
+          $smoke = Get-Content $resultPath -Raw | ConvertFrom-Json
+          if ($smoke.failed) { throw 'Portable smoke test reported a failed assertion' }
+          if (-not $smoke.result.correctStorageRoot) { throw 'Portable storage root is incorrect' }
+          if ($smoke.result.node -ne 'undefined') { throw 'Renderer Node isolation failed' }
+          if ($smoke.result.api -ne 'function') { throw 'Embedded backend API is unavailable' }
+          if ($smoke.interaction.settingsSaved -ne '已保存') { throw 'Settings were not saved' }
+          Write-Host 'Clean Windows portable download test passed.'
+
+      - name: Upload smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-release-smoke-evidence
+          path: |
+            ${{ runner.temp }}/artifacts/**
+            ${{ runner.temp }}/portable-stdout.log
+            ${{ runner.temp }}/portable-stderr.log
+          if-no-files-found: warn
