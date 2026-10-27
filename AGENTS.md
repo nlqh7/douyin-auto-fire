@@ -4,7 +4,7 @@
 
 ## 约束
 
-- 所有依赖、日志和缓存只能留在项目目录。不得读取或输出 `data/storage-state.json`、Cookie、日常浏览器资料或 CCSwitch 配置。优先使用 Kimi WebBridge 操作当前浏览器，通过固定 `spark-keeper` 会话和本机 HTTP 接口调用；不要切换会话或关闭用户标签页。默认 Chrome 备用模式不得复制配置，被占用时停止，不强关浏览器。
+- 所有依赖、日志和缓存只能留在项目目录。不得读取或输出 `data/storage-state.json`、Cookie、日常浏览器资料或 CCSwitch 配置。优先使用 Kimi WebBridge 操作当前浏览器，通过固定 `spark-keeper` 会话和本机 HTTP 接口调用；不要切换会话或关闭用户标签页。系统默认浏览器备用模式仅支持 Chrome / Edge，不得复制配置，被占用时停止，不强关浏览器。
 - 按 `data/control.json` 的时间扫描所有灰色火花，各发一次配置的文字或原生表情；已点亮跳过；状态不明不发。已确认开启的常驻任务随应用启动恢复，错过时间不补发。
 - 未获用户当次明确确认，不得真实发送或启用自动发送。Dry Run 不得调用发送路径。
 - Electron 使用安全 preload IPC，渲染层不能传任意命令。新增操作必须加入固定参数白名单并补测试。

@@ -198,7 +198,7 @@ function renderConfig() {
 function applyState(state, syncSettings = false) {
   renderAccount(state);
   loggedIn = state.loggedIn;
-  elements.loginStatus.textContent = state.config.browser_mode === 'webbridge' ? 'WebBridge 已连接' : (state.config.browser_mode === 'default' ? '默认 Chrome' : (loggedIn ? '已登录' : '需要登录'));
+  elements.loginStatus.textContent = state.config.browser_mode === 'webbridge' ? 'WebBridge 已连接' : (state.config.browser_mode === 'default' ? '系统默认浏览器' : (loggedIn ? '已登录' : '需要登录'));
   elements.loginStatus.classList.toggle('ready', loggedIn);
   elements.toggle.checked = state.watching;
   elements.watchingBadge.hidden = !state.watching;

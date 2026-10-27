@@ -6,7 +6,7 @@ import time
 from playwright.async_api import async_playwright
 
 from app.local_browser import find_system_browser
-from app.profile_browser import open_default_chrome
+from app.profile_browser import open_default_browser
 
 
 DOUYIN_URL = "https://www.douyin.com/"
@@ -14,13 +14,13 @@ DOUYIN_URL = "https://www.douyin.com/"
 
 async def login(destination: Path, browser_mode: str = "isolated") -> None:
     if browser_mode == "default":
-        print("将使用电脑默认 Chrome 的登录资料；若启动失败，请先关闭所有 Chrome 窗口。")
-        async with open_default_chrome(headless=False) as session:
+        print("将使用系统默认 Chrome 或 Edge 的登录资料；若启动失败，请先关闭对应浏览器的所有窗口。")
+        async with open_default_browser(headless=False) as session:
             page = session.page
             await page.goto(DOUYIN_URL, wait_until="domcontentloaded")
             await _open_login(page)
             await _wait_for_login(session.context, page)
-        print("默认 Chrome 已确认登录，后续会直接复用。")
+        print("系统默认浏览器已确认登录，后续会直接复用。")
         return
 
     temporary = destination.with_suffix(".tmp")

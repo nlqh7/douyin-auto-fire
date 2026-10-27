@@ -16,7 +16,7 @@ from app.local_browser import find_system_browser
 from app.main import _configure_logging
 from app.models import Message, Settings
 from app.privacy import build_target_aliases, target_alias
-from app.profile_browser import open_default_chrome
+from app.profile_browser import open_default_browser
 from app.sender import send_message
 from app.streaks import discover_streak_friends
 
@@ -67,7 +67,7 @@ async def run_guarded(*, dry_run: bool, scheduled: bool = False) -> int:
     history = History(LOG_DIR / "history.json")
     run_date = history.run_date("Asia/Shanghai")
     results: list[dict] = []
-    browser_session = open_default_chrome(headless=settings.headless) if control["browser_mode"] == "default" else open_douyin(settings)
+    browser_session = open_default_browser(headless=settings.headless) if control["browser_mode"] == "default" else open_douyin(settings)
 
     async with browser_session as session:
         page = session.page
