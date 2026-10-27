@@ -78,6 +78,8 @@ h1 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -.3px; }
 .primary:hover:not(:disabled) { background: var(--button-hover); }
 .secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
 .secondary:hover:not(:disabled) { background: var(--surface-soft); border-color: #cbd5df; }
+.danger { background: #c94545; color: #fff; }
+.danger:hover:not(:disabled) { background: #ad3535; }
 .hint { margin: 7px 0 0; color: var(--muted); font-size: 9px; text-align: center; }
 .auto-content { display: flex; align-items: center; justify-content: space-between; margin-top: 22px; }
 .auto-content p { margin: 5px 0 0; color: var(--muted); font-size: 10px; }

@@ -248,7 +248,10 @@ if (process.argv.includes('--smoke-test')) {
       const scanFeedback = webbridgeMode ? 'WebBridge 由独立真实页面测试覆盖' : document.querySelector('#toast').textContent;
       document.querySelector('#settings-form').requestSubmit();
       for (let i = 0; i < 300 && busy; i++) await new Promise(resolve => setTimeout(resolve, 100));
-      const webbridgeWarning = !webbridgeMode || document.querySelector('#webbridge-dialog').open;
+      const warningDialog = document.querySelector('#webbridge-dialog');
+      const warningLater = document.querySelector('#webbridge-later');
+      const warningInstall = document.querySelector('#webbridge-install-now');
+      const webbridgeWarning = !webbridgeMode || (warningDialog.open && document.querySelector('#webbridge-description').textContent.includes('无法完成自动续火') && warningLater.classList.contains('danger') && warningLater.getBoundingClientRect().left < warningInstall.getBoundingClientRect().left);
       if (webbridgeMode) document.querySelector('#webbridge-later').click();
       const webbridgeWarningClosed = !document.querySelector('#webbridge-dialog').open;
       document.querySelector('input[name="message-type"][value="sticker"]').click();
