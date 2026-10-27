@@ -142,7 +142,7 @@ dialog::backdrop { background: #27314155; backdrop-filter: blur(2px); }
 .drawer-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
 #pending-drawer h2 { margin: 0; font-size: 19px; font-weight: 650; }
 #drawer-count { color: #b65b2d; }
-.drawer-close { display: grid; flex: 0 0 32px; place-items: center; width: 32px; min-height: 32px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: var(--muted); }
+.drawer-close { display: grid; flex: 0 0 44px; place-items: center; width: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 9px; background: transparent; color: var(--muted); }
 .drawer-close:hover { background: var(--surface-soft); color: var(--text); }
 .drawer-close svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; }
 #pending-drawer .drawer-description { margin: 16px 0 20px; color: var(--muted); font-size: 11px; }

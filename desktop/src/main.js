@@ -283,8 +283,11 @@ if (process.argv.includes('--smoke-test')) {
       const initiallyCollapsed = !document.querySelector('#pending-drawer').open;
       const settingsTop = document.querySelector('.settings').getBoundingClientRect().top;
       document.querySelector('#scan-summary').click();
-      const pendingCloseClear = document.querySelector('#close-pending').getBoundingClientRect().top >= 40;
-      const disclosureExpanded = document.querySelector('#pending-drawer').open && pendingCloseClear && document.querySelector('#gray-names').textContent.includes('甲') && document.querySelector('#scan-summary').getAttribute('aria-expanded') === 'true' && document.querySelector('.settings').getBoundingClientRect().top === settingsTop && document.querySelector('#pending-drawer').closedBy === 'any';
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const pendingCloseRect = document.querySelector('#close-pending').getBoundingClientRect();
+      const pendingCloseClear = pendingCloseRect.top >= 40;
+      const pendingCloseHitArea = Boolean(pendingCloseRect.width >= 44 && pendingCloseRect.height >= 44 && [[pendingCloseRect.left + 8, pendingCloseRect.top + 8], [pendingCloseRect.right - 8, pendingCloseRect.top + 8], [pendingCloseRect.left + 8, pendingCloseRect.bottom - 8], [pendingCloseRect.right - 8, pendingCloseRect.bottom - 8], [pendingCloseRect.left + 22, pendingCloseRect.top + 22]].every(([x, y]) => document.elementFromPoint(x, y)?.closest('#close-pending')));
+      const disclosureExpanded = document.querySelector('#pending-drawer').open && pendingCloseClear && pendingCloseHitArea && document.querySelector('#gray-names').textContent.includes('甲') && document.querySelector('#scan-summary').getAttribute('aria-expanded') === 'true' && document.querySelector('.settings').getBoundingClientRect().top === settingsTop && document.querySelector('#pending-drawer').closedBy === 'any';
       document.querySelector('#close-pending').click();
       const disclosureCollapsed = !document.querySelector('#pending-drawer').open;
       const main = document.querySelector('.main');
