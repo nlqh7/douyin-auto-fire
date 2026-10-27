@@ -42,6 +42,8 @@ const elements = {
   stickerCurrentImage: document.querySelector('#sticker-current-image'),
   stickerCurrentName: document.querySelector('#sticker-current-name'),
   stickerOptions: document.querySelector('#sticker-options'),
+  stickerDialog: document.querySelector('#sticker-dialog'),
+  closeSticker: document.querySelector('#close-sticker'),
   saveSettings: document.querySelector('#save-settings'),
   settingsStatus: document.querySelector('#settings-status'),
   toast: document.querySelector('#toast'),
@@ -175,8 +177,7 @@ function renderStickerOptions() {
     button.append(image, label);
     button.addEventListener('click', () => {
       elements.stickerInput.value = name;
-      elements.stickerOptions.hidden = true;
-      elements.stickerCurrent.setAttribute('aria-expanded', 'false');
+      elements.stickerDialog.close();
       updateStickerCurrent();
     });
     elements.stickerOptions.append(button);
@@ -283,15 +284,11 @@ elements.scanSummary.addEventListener('click', () => {
 elements.closePending.addEventListener('click', () => elements.pendingDrawer.close());
 elements.pendingDrawer.addEventListener('close', () => elements.scanSummary.setAttribute('aria-expanded', 'false'));
 elements.stickerCurrent.addEventListener('click', () => {
-  elements.stickerOptions.hidden = !elements.stickerOptions.hidden;
-  elements.stickerCurrent.setAttribute('aria-expanded', String(!elements.stickerOptions.hidden));
+  elements.stickerDialog.showModal();
+  elements.stickerCurrent.setAttribute('aria-expanded', 'true');
 });
-document.addEventListener('click', (event) => {
-  if (!event.target.closest('.sticker-picker')) {
-    elements.stickerOptions.hidden = true;
-    elements.stickerCurrent.setAttribute('aria-expanded', 'false');
-  }
-});
+elements.closeSticker.addEventListener('click', () => elements.stickerDialog.close());
+elements.stickerDialog.addEventListener('close', () => elements.stickerCurrent.setAttribute('aria-expanded', 'false'));
 
 elements.form.addEventListener('submit', async (event) => {
   event.preventDefault();

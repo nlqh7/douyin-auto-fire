@@ -54,6 +54,8 @@ function createWindow() {
     title: '火花',
     icon: path.join(__dirname, '..', 'assets', 'icon.ico'),
     autoHideMenuBar: true,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: { color: '#edf2f7', symbolColor: '#4b5563', height: 32 },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       additionalArguments: [smokeTest ? '--smoke-test' : '--auto-scan'],
@@ -218,7 +220,8 @@ app.on('before-quit', (event) => {
 
 if (process.argv.includes('--smoke-test')) {
   app.whenReady().then(async () => {
-    window.setSize(400, 520);
+    window.setMinimumSize(800, 520);
+    window.setSize(900, 560);
     await new Promise((resolve) => setTimeout(resolve, 1200));
     const result = await window.webContents.executeJavaScript(`({
       title: document.title,
@@ -257,6 +260,10 @@ if (process.argv.includes('--smoke-test')) {
       document.querySelector('input[name="message-type"][value="sticker"]').click();
       document.querySelector('#sticker-current').click();
       const stickerCount = document.querySelectorAll('#sticker-options button').length;
+      const stickerDialog = document.querySelector('#sticker-dialog');
+      const firstOption = document.querySelector('#sticker-options button').getBoundingClientRect();
+      const lastOption = document.querySelector('#sticker-options button:last-child').getBoundingClientRect();
+      const stickerScrollable = stickerDialog.open && firstOption.top >= 0 && lastOption.bottom <= window.innerHeight;
       document.querySelector('#sticker-options button[data-name="续火花"]').click();
       await new Promise(resolve => setTimeout(resolve, 300));
       const selectedSticker = document.querySelector('#sticker-current-name').textContent;
@@ -276,10 +283,13 @@ if (process.argv.includes('--smoke-test')) {
       const initiallyCollapsed = !document.querySelector('#pending-drawer').open;
       const settingsTop = document.querySelector('.settings').getBoundingClientRect().top;
       document.querySelector('#scan-summary').click();
-      const disclosureExpanded = document.querySelector('#pending-drawer').open && document.querySelector('#gray-names').textContent.includes('甲') && document.querySelector('#scan-summary').getAttribute('aria-expanded') === 'true' && document.querySelector('.settings').getBoundingClientRect().top === settingsTop && document.querySelector('#pending-drawer').closedBy === 'any';
+      const pendingCloseClear = document.querySelector('#close-pending').getBoundingClientRect().top >= 40;
+      const disclosureExpanded = document.querySelector('#pending-drawer').open && pendingCloseClear && document.querySelector('#gray-names').textContent.includes('甲') && document.querySelector('#scan-summary').getAttribute('aria-expanded') === 'true' && document.querySelector('.settings').getBoundingClientRect().top === settingsTop && document.querySelector('#pending-drawer').closedBy === 'any';
       document.querySelector('#close-pending').click();
       const disclosureCollapsed = !document.querySelector('#pending-drawer').open;
-      const settingsFit = document.querySelector('.settings').getBoundingClientRect().bottom <= document.documentElement.clientHeight;
+      const main = document.querySelector('.main');
+      main.scrollTop = main.scrollHeight;
+      const settingsFit = main.scrollTop > 0 && getComputedStyle(main).overflowY === 'auto';
       renderAccount({account: {name: '测试账号'}, avatar: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', scan: {count: 0, targets: []}});
       await new Promise(resolve => setTimeout(resolve, 150));
       const avatarVisible = document.querySelector('#account-avatar-image').naturalWidth > 0;
@@ -297,6 +307,7 @@ if (process.argv.includes('--smoke-test')) {
         webbridgeWarningClosed,
         logsVisible,
         stickerCount,
+        stickerScrollable,
         selectedSticker,
         stickerImageLoaded,
         pendingState,
@@ -312,14 +323,14 @@ if (process.argv.includes('--smoke-test')) {
     })()`);
     console.log(JSON.stringify(interaction));
     await fs.mkdir(path.join(root, 'artifacts'), { recursive: true });
-    await window.webContents.executeJavaScript(`renderAccount({account: {name: '测试账号'}, avatar: null, scan: {count: 2, targets: ['甲', '乙']}}); document.querySelector('#scan-summary').click();`);
+    await window.webContents.executeJavaScript(`renderAccount({account: {name: '测试账号'}, avatar: null, scan: {count: 2, targets: ['甲', '乙']}}); document.querySelector('#sticker-current').click();`);
     window.show();
     window.focus();
     await new Promise((resolve) => setTimeout(resolve, 300));
     const screenshot = await window.webContents.capturePage();
     if (screenshot.isEmpty()) throw new Error('窗口截图失败');
     await fs.writeFile(path.join(root, 'artifacts', 'desktop-smoke.png'), screenshot.toPNG());
-    const failed = result.scrollHeight > result.clientHeight || !result.correctStorageRoot || result.node !== 'undefined' || result.api !== 'function' || result.webbridgeInstallApi !== 'function' || result.webbridgeInstallLabel !== 'WebBridge 官方安装 ↗' || !result.startupScanDisabled || (result.loginRequired && !result.scanDisabled) || !interaction.enabledAfterLogin || !(interaction.scanFeedback.includes('尚未完成独立浏览器登录') || interaction.scanFeedback.includes('WebBridge')) || !interaction.feedback.includes('发送设置已保存') || interaction.settingsSaved !== '已保存' || !interaction.webbridgeWarning || !interaction.webbridgeWarningClosed || !interaction.logsVisible || interaction.stickerCount !== 12 || interaction.selectedSticker !== '续火花' || !interaction.stickerImageLoaded || !interaction.pendingState || !interaction.initiallyCollapsed || !interaction.disclosureExpanded || !interaction.disclosureCollapsed || !interaction.settingsFit || !interaction.avatarFallback || !interaction.avatarLoaded || !interaction.avatarRetained || !interaction.completedState;
+    const failed = !result.correctStorageRoot || result.node !== 'undefined' || result.api !== 'function' || result.webbridgeInstallApi !== 'function' || result.webbridgeInstallLabel !== 'WebBridge 官方安装 ↗' || !result.startupScanDisabled || (result.loginRequired && !result.scanDisabled) || !interaction.enabledAfterLogin || !(interaction.scanFeedback.includes('尚未完成独立浏览器登录') || interaction.scanFeedback.includes('WebBridge')) || !interaction.feedback.includes('发送设置已保存') || interaction.settingsSaved !== '已保存' || !interaction.webbridgeWarning || !interaction.webbridgeWarningClosed || !interaction.logsVisible || interaction.stickerCount !== 12 || !interaction.stickerScrollable || interaction.selectedSticker !== '续火花' || !interaction.stickerImageLoaded || !interaction.pendingState || !interaction.initiallyCollapsed || !interaction.disclosureExpanded || !interaction.disclosureCollapsed || !interaction.settingsFit || !interaction.avatarFallback || !interaction.avatarLoaded || !interaction.avatarRetained || !interaction.completedState;
     await fs.writeFile(path.join(root, 'artifacts', 'smoke-result.json'), JSON.stringify({ result, interaction, failed }));
     app.exit(failed ? 1 : 0);
   }).catch((error) => {

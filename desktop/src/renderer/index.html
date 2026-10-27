@@ -125,11 +125,10 @@
                 <label id="sticker-label">原生表情</label>
                 <input id="sticker-input" type="hidden" value="晚上好">
                 <div class="sticker-picker">
-                  <button id="sticker-current" class="sticker-current" type="button" aria-labelledby="sticker-label sticker-current" aria-expanded="false">
+                  <button id="sticker-current" class="sticker-current" type="button" aria-labelledby="sticker-label sticker-current" aria-haspopup="dialog" aria-expanded="false" aria-controls="sticker-dialog">
                     <img id="sticker-current-image" src="../../assets/stickers/晚上好.png" alt="">
                     <span id="sticker-current-name">晚上好</span><span class="chevron" aria-hidden="true"></span>
                   </button>
-                  <div id="sticker-options" class="sticker-options" role="group" aria-label="选择原生表情" hidden></div>
                 </div>
               </div>
             </div>
@@ -159,6 +158,11 @@
     </div>
     <p class="drawer-description">这些会话的火花今天还未点亮</p>
     <div id="gray-details" class="gray-details"><ul id="gray-names" class="gray-names"><li>还没有扫描记录</li></ul></div>
+  </dialog>
+
+  <dialog id="sticker-dialog" closedby="any" aria-labelledby="sticker-dialog-title">
+    <div class="picker-heading"><h2 id="sticker-dialog-title">选择原生表情</h2><button id="close-sticker" class="drawer-close" type="button" aria-label="关闭表情选择"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+    <div id="sticker-options" class="sticker-options" role="group" aria-label="选择原生表情"></div>
   </dialog>
 
   <dialog id="confirm-dialog" aria-labelledby="confirm-title">
