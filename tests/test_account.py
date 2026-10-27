@@ -57,6 +57,47 @@ def test_refresh_keeps_previous_avatar_when_download_fails(monkeypatch, tmp_path
     close_pages.assert_called_once_with()
 
 
+def test_refresh_verification_uses_generic_account_on_first_run(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(account, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(account, "ACCOUNT_PATH", tmp_path / "account.json")
+    monkeypatch.setattr(account, "AVATAR_PATH", tmp_path / "douyin-avatar.jpg")
+    actions = []
+    monkeypatch.setattr(account, "ensure_chat", lambda: actions.append("chat"))
+    monkeypatch.setattr(account, "ensure_tab", lambda *args: actions.append("profile"))
+    monkeypatch.setattr(account, "evaluate", lambda code: {"name": "", "avatar": "", "verification": True})
+    monkeypatch.setattr(account, "save_avatar", lambda url: (_ for _ in ()).throw(AssertionError("验证页不应下载头像")))
+    monkeypatch.setattr(account, "close_managed_pages", lambda: actions.append("close"))
+
+    result = account.refresh_account()
+
+    assert result["name"] == "抖音账号"
+    assert result["avatar"] is None
+    assert result["degraded"] is True
+    assert result["refreshed_at"]
+    assert json.loads(account.ACCOUNT_PATH.read_text(encoding="utf-8")) == result
+    assert actions == ["chat", "profile", "close"]
+
+
+def test_refresh_verification_preserves_cached_account(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(account, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(account, "ACCOUNT_PATH", tmp_path / "account.json")
+    monkeypatch.setattr(account, "AVATAR_PATH", tmp_path / "douyin-avatar.jpg")
+    account.ACCOUNT_PATH.write_text(json.dumps({"name": "已有账号", "avatar": "douyin-avatar.jpg"}), encoding="utf-8")
+    account.AVATAR_PATH.write_bytes(b"cached avatar")
+    monkeypatch.setattr(account, "ensure_chat", lambda: None)
+    monkeypatch.setattr(account, "ensure_tab", lambda *args: None)
+    monkeypatch.setattr(account, "evaluate", lambda code: {"name": "", "avatar": "", "verification": True})
+    monkeypatch.setattr(account, "save_avatar", lambda url: False)
+    monkeypatch.setattr(account, "close_managed_pages", lambda: None)
+
+    result = account.refresh_account()
+
+    assert result["name"] == "已有账号"
+    assert result["avatar"] == "douyin-avatar.jpg"
+    assert result["degraded"] is True
+    assert account.AVATAR_PATH.read_bytes() == b"cached avatar"
+
+
 def test_scan_from_previous_day_is_not_shown_as_pending_today(monkeypatch, tmp_path) -> None:
     from datetime import datetime, timedelta
     from zoneinfo import ZoneInfo

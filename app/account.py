@@ -44,31 +44,43 @@ def save_avatar(url: str | None) -> bool:
 def refresh_account() -> dict:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     try:
+        ensure_chat()
+        try:
+            previous = json.loads(ACCOUNT_PATH.read_text(encoding="utf-8"))
+        except (FileNotFoundError, OSError, ValueError):
+            previous = {}
         ensure_tab("https://www.douyin.com/user/self", "火花账号信息")
         profile = evaluate(
             """(async () => {
               const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
-              let profile = {name: '', avatar: ''};
+              let profile = {name: '', avatar: '', verification: false};
               for (let i = 0; i < 20; i++) {
                 const heading = [...document.querySelectorAll('h1')].find(e => e.innerText.trim());
                 const image = document.querySelector('[data-e2e="live-avatar"] img') || [...document.images].find(img => heading && img.alt === `${heading.innerText.trim()}头像`);
-                profile = {name: heading?.innerText.trim() || '', avatar: image?.currentSrc || image?.src || ''};
-                if (profile.name && profile.avatar) break;
+                profile = {name: heading?.innerText.trim() || '', avatar: image?.currentSrc || image?.src || '', verification: document.title === '验证码中间页'};
+                if (profile.verification || (profile.name && profile.avatar)) break;
                 await wait(500);
               }
               return profile;
             })()"""
         )
-        if not profile.get("name"):
-            raise RuntimeError("无法读取当前抖音账号名称")
-        avatar_saved = save_avatar(profile.get("avatar"))
+        degraded = not profile.get("name")
+        avatar_saved = False if degraded else save_avatar(profile.get("avatar"))
+        if degraded:
+            name = previous.get("name") or "抖音账号"
+            avatar = previous.get("avatar") if AVATAR_PATH.is_file() else None
+            avatar = avatar or (AVATAR_PATH.name if AVATAR_PATH.is_file() else None)
+        else:
+            name = profile["name"]
+            avatar = AVATAR_PATH.name if avatar_saved or AVATAR_PATH.is_file() else None
         account = {
-            "name": profile["name"],
-            "avatar": AVATAR_PATH.name if avatar_saved or AVATAR_PATH.is_file() else None,
+            "name": name,
+            "avatar": avatar,
             "refreshed_at": datetime.now().astimezone().isoformat(),
         }
+        if degraded:
+            account["degraded"] = True
         ACCOUNT_PATH.write_text(json.dumps(account, ensure_ascii=False), encoding="utf-8")
-        ensure_chat()
         return account
     finally:
         close_managed_pages()
